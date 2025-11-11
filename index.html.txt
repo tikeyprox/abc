@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<title>Angry Birds Clone</title>
+<style>
+  html, body { margin: 0; overflow: hidden; background: #87ceeb; }
+  canvas { display: block; margin: 0 auto; background: #8ed0f0; }
+  #overlay {
+    position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; background: rgba(0,0,0,0.5); color: white;
+    font-family: Arial, sans-serif; z-index: 10;
+  }
+  button {
+    background: #ff4444; border: none; color: white; font-size: 24px;
+    padding: 10px 20px; border-radius: 8px; cursor: pointer;
+  }
+  button:hover { background: #ff6666; }
+</style>
+</head>
+<body>
+<canvas id="game"></canvas>
+<div id="overlay">
+  <h1>🎯 Angry Birds Clone</h1>
+  <button id="playBtn">▶ PLAY</button>
+</div>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+canvas.width = innerWidth;
+canvas.height = innerHeight;
+
+let gravity = 0.5;
+let bird, pigs = [], boxes = [], launched = false;
+let slingshot = {x: 200, y: canvas.height - 200, radius: 50};
+let mouse = {x: 0, y: 0, down: false};
+let score = 0;
+let overlay = document.getElementById("overlay");
+let playBtn = document.getElementById("playBtn");
+
+class Bird {
+  constructor(x, y) {
+    this.x = x; this.y = y;
+    this.vx = 0; this.vy = 0;
+    this.radius = 20;
+    this.color = "red";
+  }
+  update() {
+    if (launched) {
+      this.vy += gravity;
+      this.x += this.vx;
+      this.y += this.vy;
+      if (this.y + this.radius > canvas.height - 100) {
+        this.y = canvas.height - 100 - this.radius;
+        this.vy *= -0.5;
+      }
+    }
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.fillStyle = this.color;
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+class Pig {
+  constructor(x, y) {
+    this.x = x; this.y = y;
+    this.radius = 20;
+    this.dead = false;
+  }
+  draw() {
+    ctx.beginPath();
+    ctx.fillStyle = this.dead ? "gray" : "green";
+    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+    ctx.fill();
+  }
+}
+
+function init() {
+  bird = new Bird(slingshot.x, slingshot.y);
+  pigs = [
+    new Pig(800, canvas.height - 120),
+    new Pig(850, canvas.height - 120)
+  ];
+  launched = false;
+}
+
+function drawGround() {
+  ctx.fillStyle = "#654321";
+  ctx.fillRect(0, canvas.height - 100, canvas.width, 100);
+}
+
+function drawSlingshot() {
+  ctx.beginPath();
+  ctx.lineWidth = 5;
+  ctx.strokeStyle = "brown";
+  ctx.moveTo(slingshot.x, slingshot.y);
+  ctx.lineTo(bird.x, bird.y);
+  ctx.stroke();
+}
+
+function detectCollisions() {
+  pigs.forEach(p => {
+    if (!p.dead) {
+      let dx = bird.x - p.x;
+      let dy = bird.y - p.y;
+      let dist = Math.hypot(dx, dy);
+      if (dist < bird.radius + p.radius) {
+        p.dead = true;
+        score += 500;
+      }
+    }
+  });
+}
+
+function animate() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawGround();
+  pigs.forEach(p => p.draw());
+  if (!launched && mouse.down) drawSlingshot();
+  bird.update();
+  bird.draw();
+  detectCollisions();
+  ctx.fillStyle = "black";
+  ctx.font = "24px Arial";
+  ctx.fillText("Score: " + score, 20, 40);
+  requestAnimationFrame(animate);
+}
+
+canvas.addEventListener("mousedown", e => {
+  mouse.down = true;
+  mouse.x = e.clientX;
+  mouse.y = e.clientY;
+});
+canvas.addEventListener("mouseup", e => {
+  if (!launched) {
+    mouse.down = false;
+    bird.vx = (slingshot.x - bird.x) * -0.2;
+    bird.vy = (slingshot.y - bird.y) * -0.2;
+    launched = true;
+  }
+});
+canvas.addEventListener("mousemove", e => {
+  mouse.x = e.clientX;
+  mouse.y = e.clientY;
+  if (mouse.down && !launched) {
+    bird.x = e.clientX;
+    bird.y = e.clientY;
+  }
+});
+
+playBtn.onclick = () => {
+  overlay.style.display = "none";
+  init();
+  animate();
+};
+</script>
+</body>
+</html>
